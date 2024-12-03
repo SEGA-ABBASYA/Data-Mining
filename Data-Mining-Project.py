@@ -1,11 +1,9 @@
 import string
 from collections import defaultdict
-
 import pandas as pd
-
 import tkinter as tk
 from tkinter import ttk, filedialog
-
+from tkinter import Canvas
 # IMPORTANT: Can be taken as input from the GUI later on
 minimum_support = 3
 minimum_confidence = 0.2
@@ -17,7 +15,7 @@ transactions = {}
 
 # Transform excel input into a transactions hash table <TID, Items>
 for _, row in transactions_excel.iterrows():
-    key = row['TiD'] 
+    key = row['TiD']
     value = row['items'].split(',')
     transactions[key] = value
 
@@ -62,7 +60,7 @@ class Node:
         return f"Node: {self.name}, Frequency: {self.frequency}"
 
 # Root of the FP growth tree
-null_node = Node('null', 0)
+null_node = Node('null',0)
 
 # Construct the FP growth tree using the sorted transactions' items
 for items in transactions.values():
@@ -76,7 +74,7 @@ for items in transactions.values():
                 item_in_children = 1
                 current_node = child
                 break
-        
+
         if not item_in_children:
             new_child = Node(item, 1)
             current_node.add_child(new_child)
@@ -107,6 +105,7 @@ for item in one_itemsets_support_count.keys():
 
 #list to calculate each combination in
 current_items_to_add = []
+
 #recursive take or leave function
 def count(index):
     if index == len(current_items):
@@ -127,7 +126,7 @@ for item1 in conditional_pattern.keys():
     current_items_to_add.pop()
     current_items.clear()
 
-# count the support for a given item set
+#count the support for a given item set
 def count_itemset_support(itemset, transactions):
     sup_count = 0
     for transactions_items in transactions.values():
@@ -147,19 +146,19 @@ def count_itemset_support(itemset, transactions):
 
 #generate subsets of an itemset
 def generate_subsets(itemset, index, current_subset, all_subsets):
-    
+
     if index == len(itemset):
         if current_subset:
             all_subsets.append(current_subset)
         return all_subsets
-    
+
     generate_subsets(itemset, index + 1, current_subset + [itemset[index]], all_subsets)
-    
+
     generate_subsets(itemset, index + 1, current_subset, all_subsets)
-    
+
     return all_subsets
 
-# function calculates and returns the support for each subset of the itemset
+#function calculates and returns the support for each subset of the itemset
 def calculate_subsets_support(itemset, transactions):
     support_res = []
     subsets = generate_subsets(itemset, 0, [], [])
@@ -168,33 +167,61 @@ def calculate_subsets_support(itemset, transactions):
             continue
         subset_sup = count_itemset_support(subset, transactions)
         support_res.append((subset, subset_sup))  # Return subset and its support
-        
+
     return support_res
 
-
-# calculate the confidence for all subsets of the itemset.
+# calculate the confidence for all subsets of the itemset
 def calculate_confidence(itemset, transactions):
-    
     subsets = generate_subsets(itemset, 0, [], [])
     itemset_sup = count_itemset_support(itemset, transactions)
-    
+
     confidence_res = []
     for subset in subsets:
         if subset == itemset:
             continue
         subset_sup = count_itemset_support(subset, transactions)
-        
-        if subset_sup >= minimum_support: # useless checking cause of (downward closure property)
+
+        if subset_sup >= minimum_support:  # useless checking cause of (downward closure property)
             conf = itemset_sup / subset_sup
             if conf >= minimum_confidence:
-                confidence_res.append((subset, conf))
-            
+                remaining = [item for item in itemset if item not in subset]
+                confidence_res.append((subset, remaining, conf))
+
     return confidence_res
-    
-    
 
 
-for index,level in enumerate(frequnt_itemset):
+def calculate_lift(itemset, subset):
+    # Calculate support for the full itemset
+    itemset_support_count = count_itemset_support(itemset, transactions)
+    itemset_support = itemset_support_count / len(transactions)
+
+    # Calculate support for the subset
+    subset_support_count = count_itemset_support(subset, transactions)
+    subset_support = subset_support_count / len(transactions)
+
+    # Calculate support for the remaining items
+    remaining_items = [item for item in itemset if item not in subset]
+    remaining_support_count = count_itemset_support(remaining_items, transactions)
+    remaining_support = remaining_support_count / len(transactions)
+
+    # Compute the lift if the product of subset and remaining supports is greater than 0
+    if subset_support * remaining_support > 0:
+        lift = itemset_support / (subset_support * remaining_support)
+        return lift
+    else:
+        return 0
+
+
+def classify_relationship(lift):
+    if lift > 1:
+        return "positive relationship :)"
+    elif lift < 1:
+        return "Negative relationship :)"
+    else:
+        return "No relation :("
+
+
+for index, level in enumerate(frequnt_itemset):
     if len(level) == 0:
         continue
     print(f"level {index} frequent itemset:")
@@ -203,5 +230,78 @@ for index,level in enumerate(frequnt_itemset):
         confidence_res = calculate_confidence(itemset, transactions)
         sup_res = calculate_subsets_support(itemset, transactions)
         itemset_sup = count_itemset_support(itemset, transactions)
-        for subset, support in sup_res:
-            print(f"support for {subset} -> {itemset}: {support}")
+        for subset, remaining, conf in confidence_res:
+            print(f"Confidence for {subset} -> {remaining}: {conf}")
+
+root = tk.Tk()
+root.title("association rules with lift calculation")
+
+min_support_var = tk.DoubleVar(value=minimum_support)
+min_confidence_var = tk.DoubleVar(value=minimum_confidence)
+
+def process_data():
+    global minimum_support, minimum_confidence
+    minimum_support = min_support_var.get()
+    minimum_confidence = min_confidence_var.get()
+
+    output_text.delete(1.0, tk.END)
+    results = []
+    for index, level in enumerate(frequnt_itemset):
+        if len(level) == 0:
+            continue
+        results.append(f"Level {index} Frequent Itemsets:")
+        for itemset in level:
+            results.append(f"Itemset: {itemset}")
+            itemset_sup = count_itemset_support(itemset, transactions)
+            results.append(f"Support: {itemset_sup}")
+
+            confidence_res = calculate_confidence(itemset, transactions)
+            for subset, remaining, conf in confidence_res:
+                lift_res = calculate_lift(itemset, subset)
+                relationship = classify_relationship(lift_res)
+                results.append(f"Confidence for {subset} -> {remaining}: {conf:.2f}")
+                results.append(f"Lift: {lift_res:.2f}, Relationship: {relationship}")
+
+    output_text.insert(tk.END, "\n".join(results))
+
+class TreeRepresentation:
+    def __init__(self, gui, tree_root):
+        self.root = gui
+        self.tree_root = tree_root
+        self.canvas = tk.Canvas(self.root, width=1000, height=600, bg="white")
+        self.canvas.pack(fill="both", expand=True)
+        self.horizontal_spacing = 100
+        self.vertical_spacing = 100
+        self.draw_tree(self.tree_root, 500, 50)
+
+    def draw_tree(self, node, x, y):
+        radius = 20
+        self.canvas.create_oval(x - radius, y - radius, x + radius, y + radius, fill="lightblue")
+        self.canvas.create_text(x, y, text=f"{node.name}\n{node.frequency}")
+        num_children = len(node.children)
+        if num_children > 0:
+            start_x = x - ((num_children - 1) * self.horizontal_spacing) // 2
+            for i, child in enumerate(node.children):
+                child_x = start_x + i * self.horizontal_spacing
+                child_y = y + self.vertical_spacing
+                self.canvas.create_line(x, y + radius, child_x, child_y - radius, fill="black")
+                self.draw_tree(child, child_x, child_y)
+
+
+min_support_label = ttk.Label(root, text="Minimum Support:")
+min_support_label.grid(row=0, column=0, padx=10, pady=5)
+min_support_entry = ttk.Entry(root, textvariable=min_support_var)
+min_support_entry.grid(row=0, column=1, padx=10, pady=5)
+
+min_confidence_label = ttk.Label(root, text="Minimum Confidence:")
+min_confidence_label.grid(row=1, column=0, padx=10, pady=5)
+min_confidence_entry = ttk.Entry(root, textvariable=min_confidence_var)
+min_confidence_entry.grid(row=1, column=1, padx=10, pady=5)
+
+process_button = ttk.Button(root, text="Process Data", command=process_data)
+process_button.grid(row=2, column=0, columnspan=2, pady=10)
+
+output_text = tk.Text(root, height=15, width=80)
+output_text.grid(row=3, column=0, columnspan=2, padx=10, pady=10)
+
+root.mainloop()
