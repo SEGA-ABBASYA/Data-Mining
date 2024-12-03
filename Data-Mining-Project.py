@@ -7,7 +7,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog
 
 # IMPORTANT: Can be taken as input from the GUI later on
-minimum_support = 2
+minimum_support = 3
 minimum_confidence = 2
 
 transactions_excel_file_path = 'transactions1.xlsx'
@@ -81,3 +81,58 @@ for items in transactions.values():
             new_child = Node(item, 1)
             current_node.add_child(new_child)
             current_node = new_child
+
+#list for storing the currently hold items in the dfs function
+current_items = []
+#2D dict for storing the freq of each item with a certain item
+conditional_pattern = {row: {col: 0 for col in one_itemsets_support_count.keys()} for row in one_itemsets_support_count.keys()}
+#dfs function which counts the freq of each item according to a certain item (ex: conditional_patten['Y']['X'] : 3)
+def dfs(node):
+    for item in current_items:
+        conditional_pattern[node.name][item] += node.frequency
+    if node != null_node:
+        current_items.append(node.name)
+    for child in node.children:
+        dfs(child)
+    if node != null_node:
+        current_items.pop()
+
+#Calling the dfs function
+dfs(null_node)
+#item set that has each size with it each itemset
+frequnt_itemset = [[] for _ in range(len(one_itemsets_support_count.keys()))]
+for item in one_itemsets_support_count.keys():
+    if one_itemsets_support_count[item] >= minimum_support:
+        frequnt_itemset[1].append([item])
+
+#list to calculate each combination in
+current_items_to_add = []
+#recursive take or leave function
+def count(index):
+    if index == len(current_items):
+        if len(current_items_to_add) > 1:
+            frequnt_itemset[len(current_items_to_add)].append(current_items_to_add.copy())
+        return
+    current_items_to_add.append(current_items[index])
+    count(index+1)
+    current_items_to_add.pop()
+    count(index+1)
+
+for item1 in conditional_pattern.keys():
+    for item2 in conditional_pattern[item1].keys():
+        if conditional_pattern[item1][item2] >= minimum_support:
+            current_items.append(item2)
+    current_items_to_add.append(item1)
+    count(0)
+    current_items_to_add.pop()
+    current_items.clear()
+
+#print(one_itemsets_support_count)
+#print(frequnt_itemset)
+for index,level in enumerate(frequnt_itemset):
+    if len(level) == 0:
+        continue
+    print(f"level {index} frequent itemset:")
+    for itemset in level:
+        print(itemset)
+
