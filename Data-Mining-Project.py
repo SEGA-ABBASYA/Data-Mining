@@ -1,9 +1,8 @@
 import string
 from collections import defaultdict
-
-import pandas as pd
-
 import tkinter as tk
+from tkinter import Canvas
+import pandas as pd
 from tkinter import ttk, filedialog
 
 # IMPORTANT: Can be taken as input from the GUI later on
@@ -42,10 +41,12 @@ for item, support_count in one_itemsets_support_count.items():
 one_itemsets_support_count = dict(sorted(one_itemsets_support_count.items(), key=lambda x: x[1], reverse=True))
 
 items_ordering = {char: idx for idx, char in enumerate(one_itemsets_support_count.keys())}
-
+print(items_ordering)
 # Sort items in the transactions based on the ordering in one_itemsets_support_count
+# and remove duplicated items
 for key, value in transactions.items():
     transactions[key] = sorted(value, key=lambda x: items_ordering.get(x))
+    transactions[key] = list(dict.fromkeys(transactions[key]))
 
 class Node:
     def __init__(self, name, frequency):
@@ -136,3 +137,39 @@ for index,level in enumerate(frequnt_itemset):
     for itemset in level:
         print(itemset)
 
+def traverse(node):
+    print(node)
+    for child in node.children:
+        traverse(child)
+
+class TreeRepresentation:
+    def __init__(self, gui, tree_root):
+        self.root = gui
+        self.tree_root = tree_root
+        self.canvas = tk.Canvas(self.root, width=1000, height=600, bg="white")
+        self.canvas.pack(fill="both", expand=True)
+        self.horizontal_spacing = 100
+        self.vertical_spacing = 100
+        self.draw_tree(self.tree_root, 500, 50)
+
+    def draw_tree(self, node, x, y):
+        radius = 20
+        self.canvas.create_oval(x - radius, y - radius, x + radius, y + radius, fill="lightblue")
+        self.canvas.create_text(x, y, text=f"{node.name}\n{node.frequency}")
+        num_children = len(node.children)
+        if num_children > 0:
+            start_x = x - ((num_children - 1) * self.horizontal_spacing) // 2
+            for i, child in enumerate(node.children):
+                child_x = start_x + i * self.horizontal_spacing
+                child_y = y + self.vertical_spacing
+                self.canvas.create_line(x, y + radius, child_x, child_y - radius, fill="black")
+                self.draw_tree(child, child_x, child_y)
+
+
+
+if __name__ == "__main__":
+    gui = tk.Tk()
+    gui.title("FP-Tree Data-Mining Project")
+    traverse(null_node)
+    app = TreeRepresentation(gui, null_node)
+    gui.mainloop()
