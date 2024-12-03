@@ -8,7 +8,7 @@ from tkinter import ttk, filedialog
 
 # IMPORTANT: Can be taken as input from the GUI later on
 minimum_support = 3
-minimum_confidence = 2
+minimum_confidence = 0.2
 
 transactions_excel_file_path = 'transactions1.xlsx'
 transactions_excel = pd.read_excel(transactions_excel_file_path)
@@ -127,12 +127,81 @@ for item1 in conditional_pattern.keys():
     current_items_to_add.pop()
     current_items.clear()
 
-#print(one_itemsets_support_count)
-#print(frequnt_itemset)
+# count the support for a given item set
+def count_itemset_support(itemset, transactions):
+    sup_count = 0
+    for transactions_items in transactions.values():
+        all_exist = True
+        for item in itemset:
+            found = False
+            for transactions_item in transactions_items:
+                if item == transactions_item:
+                    found = True
+                    break
+            if not found:
+                all_exist = False
+                break
+        if all_exist:
+            sup_count += 1
+    return sup_count
+
+#generate subsets of an itemset
+def generate_subsets(itemset, index, current_subset, all_subsets):
+    
+    if index == len(itemset):
+        if current_subset:
+            all_subsets.append(current_subset)
+        return all_subsets
+    
+    generate_subsets(itemset, index + 1, current_subset + [itemset[index]], all_subsets)
+    
+    generate_subsets(itemset, index + 1, current_subset, all_subsets)
+    
+    return all_subsets
+
+# function calculates and returns the support for each subset of the itemset
+def calculate_subsets_support(itemset, transactions):
+    support_res = []
+    subsets = generate_subsets(itemset, 0, [], [])
+    for subset in subsets:
+        if subset == itemset:
+            continue
+        subset_sup = count_itemset_support(subset, transactions)
+        support_res.append((subset, subset_sup))  # Return subset and its support
+        
+    return support_res
+
+
+# calculate the confidence for all subsets of the itemset.
+def calculate_confidence(itemset, transactions):
+    
+    subsets = generate_subsets(itemset, 0, [], [])
+    itemset_sup = count_itemset_support(itemset, transactions)
+    
+    confidence_res = []
+    for subset in subsets:
+        if subset == itemset:
+            continue
+        subset_sup = count_itemset_support(subset, transactions)
+        
+        if subset_sup >= minimum_support: # useless checking cause of (downward closure property)
+            conf = itemset_sup / subset_sup
+            if conf >= minimum_confidence:
+                confidence_res.append((subset, conf))
+            
+    return confidence_res
+    
+    
+
+
 for index,level in enumerate(frequnt_itemset):
     if len(level) == 0:
         continue
     print(f"level {index} frequent itemset:")
     for itemset in level:
         print(itemset)
-
+        confidence_res = calculate_confidence(itemset, transactions)
+        sup_res = calculate_subsets_support(itemset, transactions)
+        itemset_sup = count_itemset_support(itemset, transactions)
+        for subset, support in sup_res:
+            print(f"support for {subset} -> {itemset}: {support}")
