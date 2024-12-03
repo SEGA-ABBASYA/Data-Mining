@@ -272,6 +272,7 @@ def process_data():
 
     for key, value in transactions.items():
         transactions[key] = sorted(value, key=lambda x: items_ordering.get(x))
+        transactions[key] = list(dict.fromkeys(transactions[key]))
 
     null_node = Node('null', 0)
     for items in transactions.values():
