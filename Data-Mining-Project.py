@@ -44,6 +44,7 @@ items_ordering = {char: idx for idx, char in enumerate(one_itemsets_support_coun
 # Sort items in the transactions based on the ordering in one_itemsets_support_count
 for key, value in transactions.items():
     transactions[key] = sorted(value, key=lambda x: items_ordering.get(x))
+    transactions[key] = list(dict.fromkeys(transactions[key]))
 
 class Node:
     def __init__(self, name, frequency):
