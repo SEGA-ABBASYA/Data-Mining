@@ -240,10 +240,109 @@ min_support_var = tk.DoubleVar(value=minimum_support)
 min_confidence_var = tk.DoubleVar(value=minimum_confidence)
 
 def process_data():
-    global minimum_support, minimum_confidence
+    global minimum_support, minimum_confidence, frequnt_itemset, transactions
+
+    # Get updated support and confidence from the GUI
     minimum_support = min_support_var.get()
     minimum_confidence = min_confidence_var.get()
 
+    # Re-initialize transactions by reading the excel file again
+    transactions_excel = pd.read_excel(transactions_excel_file_path)
+
+    # Transform excel input into a transactions hash table <TID, Items>
+    transactions = {}
+    for _, row in transactions_excel.iterrows():
+        key = row['TiD']
+        value = row['items'].split(',')
+        transactions[key] = value
+
+    # Step 1: Create a one itemsets hash table <Item, Support Count>
+    one_itemsets_support_count = defaultdict(int)
+    for letter in string.ascii_uppercase:
+        for items in transactions.values():
+            if letter in items:
+                one_itemsets_support_count[letter] += 1
+
+    # Step 2: Prune items with support count less than the minimum support
+    for item, support_count in one_itemsets_support_count.items():
+        if support_count < minimum_support:
+            for items in transactions.values():
+                if item in items:
+                    items.remove(item)
+
+    # Step 3: Sort the one itemsets descendingly based on the support count
+    one_itemsets_support_count = dict(sorted(one_itemsets_support_count.items(), key=lambda x: x[1], reverse=True))
+
+    # Step 4: Create the item ordering based on the support counts
+    items_ordering = {char: idx for idx, char in enumerate(one_itemsets_support_count.keys())}
+
+    # Step 5: Sort items in transactions based on the item ordering
+    for key, value in transactions.items():
+        transactions[key] = sorted(value, key=lambda x: items_ordering.get(x))
+
+    # Step 6: Rebuild the FP-growth tree
+    null_node = Node('null', 0)
+    for items in transactions.values():
+        current_node = null_node
+        for item in items:
+            item_in_children = 0
+            for child in current_node.children:
+                if child.name == item:
+                    child.frequency += 1
+                    item_in_children = 1
+                    current_node = child
+                    break
+
+            if not item_in_children:
+                new_child = Node(item, 1)
+                current_node.add_child(new_child)
+                current_node = new_child
+
+    # Step 7: Reset frequent itemsets and conditional pattern
+    current_items = []
+    conditional_pattern = {row: {col: 0 for col in one_itemsets_support_count.keys()} for row in one_itemsets_support_count.keys()}
+
+    def dfs(node):
+        for item in current_items:
+            conditional_pattern[node.name][item] += node.frequency
+        if node != null_node:
+            current_items.append(node.name)
+        for child in node.children:
+            dfs(child)
+        if node != null_node:
+            current_items.pop()
+
+    dfs(null_node)
+
+    # Step 8: Recalculate frequent itemsets
+    frequnt_itemset = [[] for _ in range(len(one_itemsets_support_count.keys()))]
+    for item in one_itemsets_support_count.keys():
+        if one_itemsets_support_count[item] >= minimum_support:
+            frequnt_itemset[1].append([item])
+
+    # Step 9: Generate combinations of itemsets
+    current_items_to_add = []
+
+    def count(index):
+        if index == len(current_items):
+            if len(current_items_to_add) > 1:
+                frequnt_itemset[len(current_items_to_add)].append(current_items_to_add.copy())
+            return
+        current_items_to_add.append(current_items[index])
+        count(index + 1)
+        current_items_to_add.pop()
+        count(index + 1)
+
+    for item1 in conditional_pattern.keys():
+        for item2 in conditional_pattern[item1].keys():
+            if conditional_pattern[item1][item2] >= minimum_support:
+                current_items.append(item2)
+        current_items_to_add.append(item1)
+        count(0)
+        current_items_to_add.pop()
+        current_items.clear()
+
+    # Step 10: Recalculate and display the results in the output_text widget
     output_text.delete(1.0, tk.END)
     results = []
     for index, level in enumerate(frequnt_itemset):
@@ -263,6 +362,8 @@ def process_data():
                 results.append(f"Lift: {lift_res:.2f}, Relationship: {relationship}")
 
     output_text.insert(tk.END, "\n".join(results))
+
+
 
 class TreeRepresentation:
     def __init__(self, gui, tree_root):
