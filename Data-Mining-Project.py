@@ -242,45 +242,36 @@ min_confidence_var = tk.DoubleVar(value=minimum_confidence)
 def process_data():
     global minimum_support, minimum_confidence, frequnt_itemset, transactions
 
-    # Get updated support and confidence from the GUI
     minimum_support = min_support_var.get()
     minimum_confidence = min_confidence_var.get()
 
-    # Re-initialize transactions by reading the excel file again
     transactions_excel = pd.read_excel(transactions_excel_file_path)
 
-    # Transform excel input into a transactions hash table <TID, Items>
     transactions = {}
     for _, row in transactions_excel.iterrows():
         key = row['TiD']
         value = row['items'].split(',')
         transactions[key] = value
 
-    # Step 1: Create a one itemsets hash table <Item, Support Count>
     one_itemsets_support_count = defaultdict(int)
     for letter in string.ascii_uppercase:
         for items in transactions.values():
             if letter in items:
                 one_itemsets_support_count[letter] += 1
 
-    # Step 2: Prune items with support count less than the minimum support
     for item, support_count in one_itemsets_support_count.items():
         if support_count < minimum_support:
             for items in transactions.values():
                 if item in items:
                     items.remove(item)
 
-    # Step 3: Sort the one itemsets descendingly based on the support count
     one_itemsets_support_count = dict(sorted(one_itemsets_support_count.items(), key=lambda x: x[1], reverse=True))
 
-    # Step 4: Create the item ordering based on the support counts
     items_ordering = {char: idx for idx, char in enumerate(one_itemsets_support_count.keys())}
 
-    # Step 5: Sort items in transactions based on the item ordering
     for key, value in transactions.items():
         transactions[key] = sorted(value, key=lambda x: items_ordering.get(x))
 
-    # Step 6: Rebuild the FP-growth tree
     null_node = Node('null', 0)
     for items in transactions.values():
         current_node = null_node
@@ -298,7 +289,6 @@ def process_data():
                 current_node.add_child(new_child)
                 current_node = new_child
 
-    # Step 7: Reset frequent itemsets and conditional pattern
     current_items = []
     conditional_pattern = {row: {col: 0 for col in one_itemsets_support_count.keys()} for row in one_itemsets_support_count.keys()}
 
@@ -314,13 +304,11 @@ def process_data():
 
     dfs(null_node)
 
-    # Step 8: Recalculate frequent itemsets
     frequnt_itemset = [[] for _ in range(len(one_itemsets_support_count.keys()))]
     for item in one_itemsets_support_count.keys():
         if one_itemsets_support_count[item] >= minimum_support:
             frequnt_itemset[1].append([item])
 
-    # Step 9: Generate combinations of itemsets
     current_items_to_add = []
 
     def count(index):
@@ -342,7 +330,6 @@ def process_data():
         current_items_to_add.pop()
         current_items.clear()
 
-    # Step 10: Recalculate and display the results in the output_text widget
     output_text.delete(1.0, tk.END)
     results = []
     for index, level in enumerate(frequnt_itemset):
@@ -362,6 +349,10 @@ def process_data():
                 results.append(f"Lift: {lift_res:.2f}, Relationship: {relationship}")
 
     output_text.insert(tk.END, "\n".join(results))
+    gui = tk.Tk()
+    gui.title("FP-Tree Data-Mining Project")
+    app = TreeRepresentation(gui, null_node)
+    gui.mainloop()
 
 
 
