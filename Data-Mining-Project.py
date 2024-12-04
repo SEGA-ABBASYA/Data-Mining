@@ -8,7 +8,7 @@ from tkinter import Canvas
 minimum_support = 3
 minimum_confidence = 0.2
 
-transactions_excel_file_path = 'transactions1.xlsx'
+transactions_excel_file_path = 'transactions2.xlsx'
 transactions_excel = pd.read_excel(transactions_excel_file_path)
 
 transactions = {}
@@ -366,9 +366,9 @@ class TreeRepresentation:
     def __init__(self, root, tree_root):
         self.root = root
         self.tree_root = tree_root
-        self.canvas = Canvas(self.root, width=800, height=600, bg="white")
+        self.canvas = Canvas(self.root, width=1920, height=1080, bg="white")
         self.canvas.pack(fill="both", expand=True)
-        self.draw_tree(self.tree_root, 400, 50, 200)
+        self.draw_tree(self.tree_root, 1920/2, 50, 150)
     def draw_tree(self, node, x, y, x_offset):
         radius = 20
         self.canvas.create_oval(x - radius, y - radius, x + radius, y + radius, fill="lightblue")
