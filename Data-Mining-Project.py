@@ -225,14 +225,10 @@ def classify_relationship(lift):
 for index, level in enumerate(frequnt_itemset):
     if len(level) == 0:
         continue
-    print(f"level {index} frequent itemset:")
     for itemset in level:
-        print(itemset)
         confidence_res = calculate_confidence(itemset, transactions)
         sup_res = calculate_subsets_support(itemset, transactions)
         itemset_sup = count_itemset_support(itemset, transactions)
-        for subset, remaining, conf in confidence_res:
-            print(f"Confidence for {subset} -> {remaining}: {conf}")
 
 root = tk.Tk()
 root.title("association rules with lift calculation")
@@ -337,30 +333,28 @@ def process_data():
     for index, level in enumerate(frequnt_itemset):
         if len(level) == 0:
             continue
+        results.append("##################################################")
         results.append(f"Level {index} Frequent Itemsets:")
         for itemset in level:
-            results.append(f"Itemset: {itemset}")
             itemset_sup = count_itemset_support(itemset, transactions)
+            if itemset_sup < minimum_support:
+                continue
+            results.append(f"Itemset: {itemset}")
             results.append(f"Support: {itemset_sup}")
-
+            results.append("***********************************************")
             confidence_res = calculate_confidence(itemset, transactions)
             for subset, remaining, conf in confidence_res:
                 lift_res = calculate_lift(itemset, subset)
                 relationship = classify_relationship(lift_res)
                 results.append(f"Confidence for {subset} -> {remaining}: {conf:.2f}")
                 results.append(f"Lift: {lift_res:.2f}, Relationship: {relationship}")
+                results.append("-------------------------------------------")
 
     output_text.insert(tk.END, "\n".join(results))
-    traverse(null_node)
     gui = tk.Tk()
     gui.title("FP-Tree Data-Mining Project")
     app = TreeRepresentation(gui, null_node)
     gui.mainloop()
-
-def traverse(node):
-    print(node)
-    for child in node.children:
-        traverse(child)
 
 class TreeRepresentation:
     def __init__(self, root, tree_root):
@@ -398,7 +392,7 @@ min_confidence_entry.grid(row=1, column=1, padx=10, pady=5)
 process_button = ttk.Button(root, text="Process Data", command=process_data)
 process_button.grid(row=2, column=0, columnspan=2, pady=10)
 
-output_text = tk.Text(root, height=15, width=80)
+output_text = tk.Text(root, height=35, width=80)
 output_text.grid(row=3, column=0, columnspan=2, padx=10, pady=10)
 
 
