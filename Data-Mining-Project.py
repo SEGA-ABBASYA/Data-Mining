@@ -33,7 +33,7 @@ for letter in string.ascii_uppercase:
 for item, support_count in one_itemsets_support_count.items():
     if support_count < minimum_support:
         for items in transactions.values():
-            if item in items:
+            while item in items:
                 items.remove(item)
 
 # Sorts the one itemsets descendingly based on the support count
@@ -263,7 +263,7 @@ def process_data():
     for item, support_count in one_itemsets_support_count.items():
         if support_count < minimum_support:
             for items in transactions.values():
-                if item in items:
+                while item in items:
                     items.remove(item)
 
     one_itemsets_support_count = dict(sorted(one_itemsets_support_count.items(), key=lambda x: x[1], reverse=True))
@@ -351,35 +351,38 @@ def process_data():
                 results.append(f"Lift: {lift_res:.2f}, Relationship: {relationship}")
 
     output_text.insert(tk.END, "\n".join(results))
+    traverse(null_node)
     gui = tk.Tk()
     gui.title("FP-Tree Data-Mining Project")
     app = TreeRepresentation(gui, null_node)
     gui.mainloop()
 
-
+def traverse(node):
+    print(node)
+    for child in node.children:
+        traverse(child)
 
 class TreeRepresentation:
-    def __init__(self, gui, tree_root):
-        self.root = gui
+    def __init__(self, root, tree_root):
+        self.root = root
         self.tree_root = tree_root
-        self.canvas = tk.Canvas(self.root, width=1000, height=600, bg="white")
+        self.canvas = Canvas(self.root, width=800, height=600, bg="white")
         self.canvas.pack(fill="both", expand=True)
-        self.horizontal_spacing = 100
-        self.vertical_spacing = 100
-        self.draw_tree(self.tree_root, 500, 50)
-
-    def draw_tree(self, node, x, y):
+        self.draw_tree(self.tree_root, 400, 50, 200)
+    def draw_tree(self, node, x, y, x_offset):
         radius = 20
         self.canvas.create_oval(x - radius, y - radius, x + radius, y + radius, fill="lightblue")
         self.canvas.create_text(x, y, text=f"{node.name}\n{node.frequency}")
         num_children = len(node.children)
         if num_children > 0:
-            start_x = x - ((num_children - 1) * self.horizontal_spacing) // 2
+            step = x_offset // max(num_children, 1) * 7
+            start_x = x - step * (num_children - 1) // 2
             for i, child in enumerate(node.children):
-                child_x = start_x + i * self.horizontal_spacing
-                child_y = y + self.vertical_spacing
+                child_x = start_x + i * step
+                child_y = y + 80
                 self.canvas.create_line(x, y + radius, child_x, child_y - radius, fill="black")
-                self.draw_tree(child, child_x, child_y)
+                self.draw_tree(child, child_x, child_y, x_offset // 2)
+
 
 
 min_support_label = ttk.Label(root, text="Minimum Support:")
@@ -397,5 +400,6 @@ process_button.grid(row=2, column=0, columnspan=2, pady=10)
 
 output_text = tk.Text(root, height=15, width=80)
 output_text.grid(row=3, column=0, columnspan=2, padx=10, pady=10)
+
 
 root.mainloop()
