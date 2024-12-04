@@ -13,7 +13,8 @@ transactions_excel = pd.read_excel(transactions_excel_file_path)
 
 transactions = {}
 
-# Transform excel input into a transactions hash table <TID, Items>
+# Transform excel input into a transactions hash table <TID, List<Items>>
+# Example: <1, (A, B, C, D)>
 for _, row in transactions_excel.iterrows():
     key = row['TiD']
     value = row['items'].split(',')
@@ -24,6 +25,8 @@ for _, row in transactions_excel.iterrows():
 one_itemsets_support_count = defaultdict(int)
 
 # Count support counts for all items
+# Example: <A, 6>
+#          <B, 5>
 for letter in string.ascii_uppercase:
     for items in transactions.values():
         if letter in items:
@@ -44,6 +47,7 @@ items_ordering = {char: idx for idx, char in enumerate(one_itemsets_support_coun
 # Sort items in the transactions based on the ordering in one_itemsets_support_count
 for key, value in transactions.items():
     transactions[key] = sorted(value, key=lambda x: items_ordering.get(x))
+    # Remove duplicates
     transactions[key] = list(dict.fromkeys(transactions[key]))
 
 class Node:
